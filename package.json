@@ -35,7 +35,10 @@
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
-    "VERSION"
+    "VERSION",
+    "!install.ps1",
+    "!pack.ps1",
+    "!PUSH-TO-GITHUB.md"
   ],
   "engines": {
     "node": ">=18"
