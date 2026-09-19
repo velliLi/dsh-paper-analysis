@@ -45,9 +45,12 @@ git push -u origin main
 
 ---
 
-## 第 3 步（可选）：发布到 npm，让 `npx dsh-paper-analysis` 生效
+## 第 3 步（可选，尚未执行）：发布到 npm 以便支持 `npx`
 
-只有发布到 npm，别人才能用 `npx` 一条命令安装；仓库本身用 `git clone` 就能用。
+> **当前状态：未发布。** 因此 README 里没有 `npx` 安装方式，只保留三条可用路径
+> （GitHub 插件安装 / 手动放置 / 只用技能）。若将来要走这一步，按下面操作即可。
+
+仓库本身用 `git clone` 或 `dsh plugin add github:...` 就能用；只有发布到 npm 才能多一条 `npx` 安装方式。
 
 ```powershell
 cd E:\学习资料\研究生阶段\周报\dist\repo

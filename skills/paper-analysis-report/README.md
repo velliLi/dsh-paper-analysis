@@ -2,6 +2,7 @@
 
 把一篇论文的分析写成 **三份 Word**：详细版 / 简略版 / 摘录版。
 本技能**自带全部脚本**，不依赖任何特定 Agent 预设——任何能读文件、能跑命令的 Agent（或你自己手动跑）都能用。
+（本技能来自 https://github.com/velliLi/dsh-paper-analysis ；单独拷走这个目录也能用。）
 
 ```
 paper-analysis-report/

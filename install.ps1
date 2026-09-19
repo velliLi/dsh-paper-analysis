@@ -1,5 +1,8 @@
-# 安装 paper-analysis 预设到本机用户预设根
+# 安装 paper-analysis 预设到本机用户预设根（适合 git clone / 解压 zip 之后使用）
 # 用法：powershell -ExecutionPolicy Bypass -File .\install.ps1 [-Force]
+#
+# 说明：本包尚未发布到 npm，因此没有 npx 安装方式；
+# 想用 DSH 插件方式安装请改用：dsh plugin --profile web add github:velliLi/dsh-paper-analysis
 [CmdletBinding()]
 param(
   [switch]$Force
@@ -67,6 +70,8 @@ Write-Host "接下来：" -ForegroundColor Cyan
 Write-Host "  1. 新建会话，在预设选择器里选「论文分析模式」"
 Write-Host "  2. 会话里应能看到工具 paper_docx、skill、subagent、workflow、pwsh"
 Write-Host "  3. 直接说：分析这篇论文：<PDF 路径>"
+Write-Host ""
+Write-Host "另一种安装方式（不动本机预设根）：dsh plugin --profile web add github:velliLi/dsh-paper-analysis" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "若预设没出现，用「创造模式」开会话并执行下面这行做挂载验证：" -ForegroundColor Cyan
 Write-Host "  await ctx.agentPresets.standingKeyFor('paper-analysis')   // 正常返回 = 挂载通过"
