@@ -106,3 +106,28 @@ dsh plugin --profile web add dsh-paper-analysis
 - 每次改动后自查一遍：`git status --short` 只应出现你预期的文件。
 - 修改预设或技能后，本地生效处是 `~/.dsh/.agent-presets/paper-analysis/`；
   改完记得**同步回本仓库**再提交（仓库根 = 预设根，结构一致）。
+
+---
+
+## 已经推送成功之后：别人可以直接从 GitHub 安装（无需 npm 发布）
+
+```bash
+dsh plugin --profile web add github:velliLi/dsh-paper-analysis
+```
+
+`dsh plugin` 把参数转发给 profile 目录里的 pnpm，pnpm 原生支持 `github:owner/repo`、
+`git+https://…`、`owner/repo#tag`。本包没有 prepare/postinstall 脚本，**不需要**在
+profile 的 `pnpm-workspace.yaml` 里配 `allowBuilds`。
+
+不想动 profile 时，用一次性 `--patch` 覆盖层验证（零副作用）：
+
+```bash
+dsh --profile web --patch ./cordis.patch.yml --dump-config     # 先看组合树里 agent-presets 的 roots
+```
+
+> 补丁里第二个 root 用了 `!!js import.meta.dirname`。组合预览只回显 YAML、不求值，
+> 因此它是否在运行时可用需要一次真实启动确认；若启动报 import.meta 相关错误，
+> 把那一行换成你的实际安装路径即可（`dshHomePath('.agent-presets')` 那条通常已够用）。
+
+卸载：`dsh plugin --profile web remove dsh-paper-analysis`，
+再删掉 `~/.dsh/.agent-presets/paper-analysis`（若用过 npx 安装）。

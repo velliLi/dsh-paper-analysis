@@ -1,23 +1,28 @@
 # dsh-paper-analysis 的 bundle 补丁
 #
-# 【形态已实测】本文件形状在 DSH 0.1.2-rc.1 上验证过：
-#   `dsh --profile web --patch <本文件> --dump-config`
-# 的组合树里确实出现了被覆盖的 agent-presets 行（roots 生效）。
-# 依据两处：`@deepseek-ai/dsh-agent-presets` 的 Config schema
-#   { default, roots: [{path, trust: 'system'|'user'}], includeShippedRoot, includeUserRoot }
-# 与第三方插件 `dsh-tavern-plugin` 的同一写法（它 patch 了 agent-presets）。
+# 【作用】把本包注册成 DSH 预设 roster 的一个根，于是「论文分析模式」直接出现在预设选择器里。
 #
-# 【两条通道的区别】
+# 【形态已实测】在 DSH 0.1.2-rc.1 上验证过：`dsh --profile web --patch <本文件> --dump-config`
+# 的组合树里确实出现被覆盖的 agent-presets 行（roots 生效）。依据：
+#   @deepseek-ai/dsh-agent-presets 的 Config schema
+#     { default, roots: [{path, trust: 'system'|'user'}], includeShippedRoot, includeUserRoot }
+#   以及第三方插件 dsh-tavern-plugin 的同一写法（它 patch 了 agent-presets）。
+#
+# 【两种形态，按 profile 选】
 #   - patch（本文件）：目标 profile 里**已有** agent-presets 行时用（如 web，该行由
-#     @deepseek-ai/dsh-web-app 提供）。写错成 insert 会因 id 重复冲突。
-#   - insert（cordis.insert.patch.yml）：目标 profile **没有**该行时用（如 default）。
+#     @deepseek-ai/dsh-web-app 提供）。写成 insert 会因 id 重复冲突。
+#   - insert（cordis.insert.patch.yml）：目标 profile **没有**该行时用（如内置 default）。
 #
-# 【必须改的一处】下面第二条 root 的绝对路径要换成你机器上本包的实际安装位置。
-# 路径里不要有中文或空格；Windows 用正斜杠或转义反斜杠。
+# 【为什么 roots 里两条都是表达式而不是写死的路径】
+# 本包可能来自三种安装方式，路径各不相同：npx 装到预设根、git clone、dsh plugin add 装到
+# profile 的 node_modules。写死任何一条都会在另两种情况下失效，因此：
+#   ① dshHomePath('.agent-presets') = 用户预设根（npx 安装器与手动 clone 都把预设放这里）
+#   ② import.meta.dirname           = **本补丁文件所在目录**（即本包安装位置，任何方式都对）
+# 注意 ② 的可信度：组合预览（--dump-config）只回显 YAML、不求值，因此它在运行时可不可用需要
+# 一次真实启动来确认。若启动时报 import.meta 相关错误，把 ② 换成你的实际安装路径即可。
 #
-# 【注意的行为变化】补丁会替换整段 config，因此 `default` 一并被设置为 paper-analysis：
-# 装完后新会话默认进入「论文分析模式」。要改回去：把 default 换成别的预设 id，
-# 或在 settings 的 agent-preset 段里覆盖（settings 的 base 就是这里的 default）。
+# 【注意的行为变化】补丁替换的是 agent-presets 的**整段 config**，因此 `default` 一并被设为
+# paper-analysis：装完后新会话默认进入「论文分析模式」。改回去只需编辑下面的 default。
 
 - id: agent-presets
   config:
@@ -25,12 +30,9 @@
     includeShippedRoot: true
     includeUserRoot: true
     roots:
-      # ① 用户预设根：npx dsh-paper-analysis 会把预设装到这里，因此这条通常已够用
+      # ① 用户预设根（最可靠：npx 安装器与手动放置都落在这里）
       - path: !!js dshHomePath('.agent-presets')
         trust: user
-      # ② 本包目录（root 即预设目录）—— 改成你的实际安装路径，例如：
-      #    Windows: C:/Users/<你>/AppData/Roaming/npm/node_modules/dsh-paper-analysis
-      #    POSIX:   /usr/local/lib/node_modules/dsh-paper-analysis
-      # 下面是常见位置示例，请按本机实际安装路径修改（或删掉这条 root，只留用户预设根那条）：
-      - path: C:/Users/<你的用户名>/AppData/Roaming/npm/node_modules/dsh-paper-analysis
+      # ② 本包所在目录（patch 求值上下文中的 import.meta.dirname）
+      - path: !!js import.meta.dirname
         trust: user

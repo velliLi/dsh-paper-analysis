@@ -32,10 +32,25 @@ dsh plugin --profile web add dsh-paper-analysis
 这条命令是 pnpm 转发器，会把本包装进该 profile 并写进 `dsh.profile.bundles`。
 本包已声明 `dsh.bundle.patch`，指向随包的 `cordis.patch.yml`——它把本包目录注册成
 agent-presets roster 的一个根，于是「论文分析模式」直接出现在预设选择器里。
+**补丁里的路径用表达式求值（`dshHomePath('.agent-presets')` 与 `import.meta.dirname`），
+因此 npx / git clone / 插件安装三种方式都不需要手改路径。**
 
-**装之前**：打开 `cordis.patch.yml`，把 `REPLACE_WITH_ABSOLUTE_PATH_TO_THIS_PACKAGE`
-换成本包的实际安装路径（例如
-`C:/Users/<你>/AppData/Roaming/npm/node_modules/dsh-paper-analysis`），路径里不要有中文或空格。
+### 直接从 GitHub 安装（不需要 npm 发布）
+
+```bash
+# 三条等价写法，任选一条
+dsh plugin --profile web add github:velliLi/dsh-paper-analysis
+dsh plugin --profile web add https://github.com/velliLi/dsh-paper-analysis
+dsh plugin --profile web add git+https://github.com/velliLi/dsh-paper-analysis.git
+```
+
+`dsh plugin` 会把参数原样转发给 profile 目录里的 pnpm，而 pnpm 原生支持
+`github:owner/repo`、`git+https://…`、`owner/repo#tag` 等写法。
+本包没有 `prepare`/`postinstall` 脚本，**不需要**在 profile 的 `pnpm-workspace.yaml` 里配置
+`allowBuilds`。
+
+> 官方部署默认要求 `@deepseek-ai/dsh-*` 一律以 npm 包名出现；从仓库/git 安装属于第三方插件用法，
+> 需要 profile 的 pnpm 能访问 GitHub（内网环境请改用下面的手动放置方式）。
 
 | profile 里有没有 `agent-presets` 行 | 用哪个文件 |
 |---|---|
