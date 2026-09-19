@@ -1,0 +1,8 @@
+{
+  "name": "paper-analysis-docx",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "preset-local Cordis plugin rows for the paper-analysis agent preset",
+  "main": "index.js"
+}

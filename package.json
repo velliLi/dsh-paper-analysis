@@ -1,0 +1,51 @@
+{
+  "name": "dsh-paper-analysis",
+  "version": "1.1.0",
+  "description": "DSH agent preset + skill??????????????????????????? 2?? ?????? Word ????????????????????????",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "agent-preset",
+    "cordis",
+    "paper-analysis",
+    "research",
+    "docx",
+    "??????"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/REPLACE_WITH_YOUR_GITHUB_USER/dsh-paper-analysis.git"
+  },
+  "author": "REPLACE_WITH_YOUR_NAME",
+  "homepage": "https://github.com/REPLACE_WITH_YOUR_GITHUB_USER/dsh-paper-analysis#readme",
+  "type": "module",
+  "bin": {
+    "dsh-paper-analysis": "bin/install.js"
+  },
+  "files": [
+    "bin/",
+    "agent.cordis.yml",
+    "preset.yml",
+    "cordis.patch.yml",
+    "cordis.insert.patch.yml",
+    "plugins/",
+    "skills/",
+    "source/",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "VERSION"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

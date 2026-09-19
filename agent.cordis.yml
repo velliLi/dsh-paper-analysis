@@ -1,0 +1,96 @@
+﻿# The `paper-analysis` agent preset: 面向集成电路工程方向的论文精读 Agent。
+#
+# 这是从 `standard` 复制并改写的 AGENT-PLANE 组合。改动只有三处：
+#   1. persona 换成论文分析助手，并把"必须落盘报告、必须走流水线"写成硬约束；
+#   2. 去掉 plan mode 与 goal 两族行（论文分析是一次性交付，不需要计划模式与长期目标）；
+#   3. skill-filesystem 增加 preset 自带的 skills/ 目录，把
+#      `paper-analysis-report` 技能随 preset 一起分发（`baseUrl` 是 preset 自身目录）。
+#
+# 组合平面规则不变：任何**发布服务**的行必须待在带 `isolate` realm 的 group 里。
+# 本 preset 只消费宿主服务（tools / skills / subagents / web / jobs / shell / fs），
+# 因此下面这些行都不需要 realm；`delegation` 与 `compaction` 两个 group 沿用
+# `standard` 的 realm 划分（它们各自拥有 workflowEngine / compaction / toolResultPruner）。
+#
+# TRUST：这是本地 authored preset，位于 ${DSH_HOME}/.agent-presets/paper-analysis/。
+# 升级不会覆盖它；但它必须自己保持可挂载——改完请用 standingKeyFor 验证。
+
+# ── identity ────────────────────────────────────────────────────────────────
+
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: |-
+      你是面向**集成电路工程（微电子 / EDA / 电路与系统）**方向的论文分析助手，由 {{model}} 驱动，工作目录 {{cwd}}。你的服务对象是集成电路工程专业型硕士研究生。
+
+      你的唯一交付物是**可落盘、可汇报、可复现的分析报告**，不是聊天式读后感叹。分析论文时按 `paper-analysis-report` 技能执行；该技能是操作规范，任何具体动作以它为准。
+
+      三条不可违背的规矩：
+      1. **零编造**。论文没给的数字绝不补；不确定就写 `[论文未给出]`、`[推断]`、`[待核实]`。引文照抄英文原句，不改写、不用翻译冒充引文。
+      2. **证据优先**。每条结论都要能指回 `§节号 / 页码 / Table 或 Fig 号`，并附一句原文引文；交付前用 grep 回查引文确实存在。
+      3. **判断分级**。你自己的看法必须标 `[推断]` 并给出可验证方式；创新点必须给出 A/B/C/D 分级、三条基线对照（自报最近邻 / 同期同类 / 经典母题）与**可证伪表述**。
+
+      学科口径：功耗、时序、面积、精度一律带全条件（工艺节点、Vdd、频率、工艺角、是否 post-layout、是否含外围电路）。**绝不把 RTL/算法级结果说成硬件实测结论**；跨工艺、跨电压的对比必须标"不可直接比较"。
+
+      工作方式：先落盘建目录，再逐个阶段产出中间件（00-context / 10-outline / 20-claims / 30-experiments / 40-innovation / 50-critique / 60-method），最后组装 `report.md`。P2/P3/P4 的素材用子代理并行取，对抗验证用 workflow 扇出；但**创新点分级与"我的结论"必须由你自己写**。开工前先读技能；技能里没说清的，宁可问一句，也不要猜。
+
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+# ── shell ───────────────────────────────────────────────────────────────────
+
+# `shell-env` 在 HOST 平面（apps/cli/src/web.ts 注入 DSH_WEB_URL/DSH_WEB_MODE）。
+# 这两个 shell 工具消费宿主注册表；它们的 executor（bash-sandbox / pwsh-sandbox）
+# 也在宿主平面，所以这里不需要 realm。
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: !!js process.platform === 'win32'
+
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'
+  disabled: !!js process.platform !== 'win32'
+
+# ── filesystem ──────────────────────────────────────────────────────────────
+
+# 两者都只注册进宿主 `tools` 注册表、不发布服务，因此不需要 realm。
+# 报告产物落盘、PDF 文本提取（pdftotext）、grep 回查引文都靠这两行。
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+  config:
+    sampleOverCapGlobResults: false
+
+# ── background jobs ────────────────────────────────────────────────────────
+
+# 只放模型可见的控制行；任务注册表留在宿主平面（tool-pwsh 用 ctx.get 解析它，
+# 放在 entry-local realm 里会让 shell 的 run_in_background 失效）。
+# 并行取素材（P2/P3/P4）之后要能收结果，所以保留。
+- id: tool-jobs
+  name: '@deepseek-ai/dsh-tool-jobs'
+
+# ── skills ──────────────────────────────────────────────────────────────────
+
+# 技能注册表在宿主平面并按 scope 分层：这两行注册进本 preset 的层，不需要 realm。
+# `customSkillDirs` 用 preset 自身目录（`baseUrl`）解析 skills/，所以
+# `paper-analysis-report` 技能随 preset 一起复制、一起移动、一起删除。
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  config:
+    customSkillDirs:
+      - !!js "process.getBuiltinModule('node:url').fileURLToPath(new URL('skills/', baseUrl))"
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+
+# ── preset-local plugins ────────────────────────────────────────────────────
+
+# `./plugins` 是 preset 自己的目录里的 ESM 模块（plugins/index.js），由 preset
+# 加载器按 preset 目录解析，因此不需要 npm 安装、也不需要发布包。它提供
+# `paper_docx` 工具：把 reports/ 下的 markdown 编译成 Word（详细版 + 简略版）
+# 并跑交付前校验（残留标记 / 两版数字一致 / 引文能否溯源 / 简略版是否超页）。
+# 它不发布任何服务（只注册模型工具并消费宿主 subprocess），所以不需要 isolate realm。
+- id: preset-plugins
+  name: './plugins/docx-tool.js'

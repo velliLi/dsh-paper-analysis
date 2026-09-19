@@ -1,0 +1,24 @@
+# 忽略本地产物：论文分析输出、临时文件、依赖
+PaperAnalysis/
+**/reports/
+**/analysis/
+!skills/**/analysis/
+dist/
+*.docx
+*.pdf
+!docs/*.pdf
+__pycache__/
+*.pyc
+node_modules/
+npm-debug.log*
+*.tgz
+*.zip
+*.bak
+*.bak-*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+# 本机路径/凭据
+*.local
+.env
