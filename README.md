@@ -3,8 +3,6 @@
 **DSH（DeepSeek Harness）的「论文分析」Agent 预设 + 技能**：把一篇论文变成两版可直接交给导师的
 Word 报告——**详细版**（完整证据链）与 **简略版**（2–3 页整段文字，手打报告风格）。
 
-> **发布前请替换占位符**：本仓库里的 REPLACE_WITH_YOUR_GITHUB_USER、REPLACE_WITH_YOUR_NAME、REPLACE_WITH_ABSOLUTE_PATH_TO_THIS_PACKAGE 需要换成你自己的值（分别在 README.md、package.json、cordis.patch.yml）。发布后请删除本提示。
-
 面向集成电路 / 微电子 / EDA 方向，但流程与学科无关：换掉一份参考文件即可用于其它方向。
 
 ---

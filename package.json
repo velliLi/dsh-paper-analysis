@@ -15,10 +15,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/REPLACE_WITH_YOUR_GITHUB_USER/dsh-paper-analysis.git"
+    "url": "git+https://github.com/velliLi/dsh-paper-analysis.git"
   },
-  "author": "REPLACE_WITH_YOUR_NAME",
-  "homepage": "https://github.com/REPLACE_WITH_YOUR_GITHUB_USER/dsh-paper-analysis#readme",
+  "author": "velliLi",
+  "homepage": "https://github.com/velliLi/dsh-paper-analysis#readme",
   "type": "module",
   "bin": {
     "dsh-paper-analysis": "bin/install.js"

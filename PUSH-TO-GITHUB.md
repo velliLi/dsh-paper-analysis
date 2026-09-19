@@ -9,8 +9,8 @@ GitHub 账号授权，我这边无法代办。
 
 | 文件 | 占位符 | 换成 |
 |---|---|---|
-| `README.md` 顶部 | `REPLACE_WITH_YOUR_GITHUB_USER` | 你的 GitHub 用户名（发布后删掉顶部那段提示） |
-| `package.json` | `REPLACE_WITH_YOUR_GITHUB_USER` / `REPLACE_WITH_YOUR_NAME` | 用户名 / 你的名字或 ID |
+| `README.md` 顶部 | `velliLi` | 你的 GitHub 用户名（发布后删掉顶部那段提示） |
+| `package.json` | `velliLi` / `velliLi` | 用户名 / 你的名字或 ID |
 | `cordis.patch.yml` | `REPLACE_WITH_ABSOLUTE_PATH_TO_THIS_PACKAGE` | 本包的实际安装路径（只有走 `dsh plugin add` 那条路才需要填） |
 
 ```powershell
@@ -18,10 +18,10 @@ cd E:\学习资料\研究生阶段\周报\dist\repo
 # 例：把占位符批量替换成自己的用户名（Windows 路径要带引号）
 $u = "your-github-name"
 (Get-ChildItem -Recurse -File -Include *.md,*.json,*.yml) |
-  ForEach-Object { (Get-Content $_ -Raw -Encoding UTF8).Replace('REPLACE_WITH_YOUR_GITHUB_USER', $u) |
+  ForEach-Object { (Get-Content $_ -Raw -Encoding UTF8).Replace('velliLi', $u) |
     Set-Content $_ -Encoding UTF8 -NoNewline }
 ```
-（`package.json` 里的 `REPLACE_WITH_YOUR_NAME` 与 `cordis.patch.yml` 的路径占位符请手工再改一次。）
+（`package.json` 里的 `velliLi` 与 `cordis.patch.yml` 的路径占位符请手工再改一次。）
 
 ---
 
