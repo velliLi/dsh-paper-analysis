@@ -9,12 +9,12 @@
   4. 引文出处  —— 报告里的英文引文必须能在 paper 源文本中逐字找到（规范化空白后）
   5. 图片引用  —— markdown 里的 ![](path) 与 docx 内的图片数量能否对上
 
-用法：
-  python docx_check.py --md reports/A_详细版.md reports/B_简略版.md \
-                       --detail reports/A_详细版.docx --brief reports/B_简略版.docx \
+用法（只查本次交付的版本；`--md` 按文件名识别版本：含"摘录"→摘录版，含"简略"→简略版，其余→详细版）：
+  python check_docx.py --md reports/A_详细版.md reports/B_简略版.md \
+                       --detail-docx reports/A_详细版.docx --brief-docx reports/B_简略版.docx \
                        --source analysis/source/paper.txt
 
-  python docx_check.py --md reports/B_简略版.md --source analysis/source/paper.txt
+  python check_docx.py --md reports/B_简略版.md --source analysis/source/paper.txt
 
 退出码：0 全部通过（可含 warn）；1 存在 FAIL。
 """
@@ -30,7 +30,7 @@ import zipfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
-    from docx_export import parse_markdown  # 复用同一个 markdown 解析器，保证表数一致
+    from docx_core import parse_markdown  # 复用同一个 markdown 解析器，保证表数一致
 except Exception:  # pragma: no cover
     parse_markdown = None  # type: ignore[assignment]
 

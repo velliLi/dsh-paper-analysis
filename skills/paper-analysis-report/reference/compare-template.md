@@ -2,7 +2,7 @@
 
 用途：开题铺垫、综述前期、组会"这三篇谁更值得跟"。
 目录：`<工作区>/PaperAnalysis/<YYYY-MM-DD>_对比_<主题>/`，主文件 `reports/comparison_详细版.md`，
-三版产物为 `comparison_详细版` / `comparison_简略版` / `comparison_摘录版`；
+产物按用户勾选的版本产出：`comparison_详细版` / `comparison_简略版` / `comparison_摘录版` 中勾中的那几个；
 被对比的每一篇仍是自己的独立文件夹（`PaperAnalysis/<日期>_<短标题>/`），对比文件夹里只放对比产物与指向它们的链接。
 
 ---

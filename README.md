@@ -45,18 +45,19 @@ dsh plugin --profile web add github:velliLi/dsh-paper-analysis
 `github:owner/repo`、`git+https://…`、`owner/repo#tag` 等写法。本包**没有**
 `prepare`/`postinstall` 脚本，因此**不需要**在 profile 的 `pnpm-workspace.yaml` 里配 `allowBuilds`。
 
-本包已声明 `dsh.bundle.patch` → `cordis.patch.yml`，它把本包目录注册成 agent-presets roster 的一个根，
-于是「论文分析模式」直接出现在预设选择器里。补丁里的路径用**表达式**求值
-（`dshHomePath('.agent-presets')` 与 `import.meta.dirname`），**不需要手改任何路径**。
+本包已声明 `dsh.bundle.patch` → `cordis.patch.yml`。**DSH 0.2.x 起**预设不再靠扫描目录发现，
+必须是一条 `@deepseek-ai/dsh-agent-preset` 声明行，所以该补丁用 `insert` 往组合树里加这一行，
+于是「论文分析模式」直接出现在预设选择器里。补丁里的资产路径用 `dshHomePath()` 求值
+（`<DSH_HOME>/.agent-presets/paper-analysis/{skills,plugins}`），**不需要手改任何用户名或盘符**。
 
-| profile 里有没有 `agent-presets` 行 | 用哪个文件 |
+| DSH 版本 | 用哪个补丁文件 |
 |---|---|
-| 有（如 `web`，该行由 `@deepseek-ai/dsh-web-app` 提供） | `cordis.patch.yml`（默认） |
-| 没有（如内置 `default`） | 把 `cordis.insert.patch.yml` 复制成 `cordis.patch.yml` 再用 |
+| 0.2.x 及以上（`dsh-agent-preset` 声明式） | `cordis.patch.yml`（默认，`insert` 一条 preset 行） |
+| 0.1.x（`agent-presets` 扫描目录） | `cordis.insert.patch.yml`，并覆盖 `package.json` 的 `dsh.bundle.patch` 指向它 |
 
-> **行为变化（重要）**：补丁替换的是 `agent-presets` 的整段 config，因此 `default` 被设为
-> `paper-analysis`——装完后**新会话默认进入「论文分析模式」**。要改回去：编辑该补丁的 `default`
-> 字段为别的预设 id，或在设置文档的 agent-preset 段里覆盖（该段的 base 就是这里的 `default`）。
+> **行为差异（重要）**：0.1.x 的旧补丁替换了 `agent-presets` 的整段 config，会把 `default` 一并改成
+> `paper-analysis`；0.2.x 的 `insert` 只新增 preset，**不改默认预设**，装完新会话仍是原来的默认模式，
+> 需要你在预设选择器里手动切到「论文分析模式」。
 
 不想动 profile 时，可以只用一次性覆盖层（零副作用，改完即弃）：
 
@@ -72,12 +73,25 @@ dsh --profile web --patch ./dsh-paper-analysis/cordis.patch.yml
 
 ```bash
 git clone https://github.com/velliLi/dsh-paper-analysis.git
-cp -r dsh-paper-analysis ~/.dsh/.agent-presets/paper-analysis
-# 若设过 DSH_HOME：目标改到 $DSH_HOME/.agent-presets/paper-analysis
+node dsh-paper-analysis/bin/install.js          # 复制到 <DSH_HOME>/.agent-presets/paper-analysis
+# 或手动 copy：cp -r dsh-paper-analysis ~/.dsh/.agent-presets/paper-analysis
 ```
 
 Windows 用资源管理器把仓库内容复制成 `%USERPROFILE%\.dsh\.agent-presets\paper-analysis\` 即可。
 **仓库根即预设根**，所以复制后目录里应当直接能看到 `agent.cordis.yml`。
+
+**0.2.x 的关键一步**：DSH 0.2.x **不再扫描** `.agent-presets/` 目录，光把文件放进去不会出现在选择器里。
+还要让 profile 声明这个 preset，二选一：
+
+```bash
+# A. 把本包当 bundle 装进 profile（推荐）
+dsh plugin --profile web add github:velliLi/dsh-paper-analysis
+
+# B. 一次性覆盖层验证（零副作用）
+dsh --profile web --patch ~/.dsh/.agent-presets/paper-analysis/cordis.patch.yml
+```
+
+0.1.x 用户跳过这一步，放好目录即生效。
 
 装完**重开一个 DSH 会话**，预设选择器里选「论文分析模式」，然后说：`分析这篇论文：<PDF 路径>`。
 
@@ -132,7 +146,7 @@ python skills/paper-analysis-report/tools/check_docx.py \
 | **Python 3.8+** | 生成 Word |
 | **python-docx** | `pip install python-docx` |
 | Word / WPS | 可选，仅看目录与页码时需要 |
-| pypdf（可选） | 抽取 PDF 正文用于引文逐字核对 |
+| PyMuPDF | `pip install PyMuPDF`，`tools/extract_pdf.py` 抽 PDF 正文用（纯 wheel，Windows 不需要 poppler） |
 
 不需要 pandoc、不需要 LibreOffice。
 
@@ -144,15 +158,15 @@ python skills/paper-analysis-report/tools/check_docx.py \
 .
 ├── agent.cordis.yml              DSH 预设组合（唯一改行为的入口）
 ├── preset.yml                    选择器里显示的名称与描述
-├── cordis.patch.yml              DSH 插件（bundle）补丁：把本包注册成预设根
-├── cordis.insert.patch.yml       同上，用于组合树里还没有 agent-presets 行的 profile
+├── cordis.patch.yml              DSH 0.2.x bundle 补丁：insert 一条 preset 声明行
+├── cordis.insert.patch.yml       DSH 0.1.x 的旧写法（往 agent-presets.roots 塞目录）
 ├── bin/install.js                本地安装器（把预设复制到预设根，供 fork/二次分发用）
-├── plugins/docx-tool.js          注册 paper_docx 工具（调用技能脚本）
+├── plugins/paper-report-docx-2.js 注册 paper_docx 工具（调用技能自带脚本，支持 modes 多选版本）
 ├── skills/paper-analysis-report/
 │   ├── SKILL.md                  流程与契约（铁律、9 阶段、三版交付规则、目录约定）
 │   ├── README.md                 技能独立使用说明
 │   ├── reference/                10 个按需加载的参考文件（模板/评分口径/学科口径/自检清单）
-│   └── tools/                    docx_core.py / make_docx.py / check_docx.py / check_env.py
+│   └── tools/                    docx_core.py / make_docx.py / check_docx.py / check_env.py / extract_pdf.py
 ├── install.ps1                   手动安装脚本（Windows）
 ├── pack.ps1                      重打包脚本（维护者用）
 └── source/                       组合的可读副本 + 维护说明与变更记录
@@ -176,10 +190,12 @@ python skills/paper-analysis-report/tools/check_docx.py \
 
 | 现象 | 处理 |
 |---|---|
-| 选择器里没有「论文分析模式」 | 目录层级错了：必须是 `<预设根>/paper-analysis/agent.cordis.yml` |
+| 选择器里没有「论文分析模式」（0.2.x） | 目录放进去了但 profile 没声明 preset：用 `dsh plugin --profile web add github:velliLi/dsh-paper-analysis`，或 `dsh --profile web --patch <本包>/cordis.patch.yml` |
+| 选择器里没有「论文分析模式」（0.1.x） | 目录层级错了：必须是 `<预设根>/paper-analysis/agent.cordis.yml` |
 | 会话里没有 `paper_docx` 工具 | 预设挂载失败。用「创造模式」开会话执行 `await ctx.agentPresets.standingKeyFor('paper-analysis')` 看报错 |
 | `dsh plugin add` 报找不到包 | 内网无法访问 GitHub；改用方式二手动放置 |
-| 启动时报 `import.meta` 相关错误 | `cordis.patch.yml` 里第二条 root 求值失败；把它换成你的实际安装路径，或删掉该条（第一条用户预设根通常已够用） |
+| 启动时报 `unknown prompt variable` | persona 里写了未注册的插值变量。DSH 只注册 `provider` / `model`，`{{cwd}}` 之类会直接抛错；改 `agent.cordis.yml` 的 persona 行 |
+| 启动时报 `import.meta` / `dshHomePath is not defined` | `cordis.patch.yml` 里的 `!!js` 表达式在该 DSH 版本下没有对应符号；把 skills 与 plugin 两处换成绝对路径字符串 |
 | 提示找不到 Python | 设环境变量 `PAPER_ANALYSIS_PYTHON=<python.exe 绝对路径>` 后重开 DSH |
 | 提示 `python-docx 未安装` | `pip install python-docx` |
 | 引文全部报"找不到" | `--source` 指的不是论文原文，或 PDF 无文本层（扫描件）；换成自备正文文本 |

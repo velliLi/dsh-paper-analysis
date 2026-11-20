@@ -4,7 +4,8 @@
 > 每处数字后必须能指回 `30-experiments.md` 或 `20-claims.md` 的条目 ID；每处判断带 `[推断]` / `[待核实]` / `[论文未给出]` 标记者除外，其余视为已证实。
 > 引文一律 `> "原文英文句子"（§节号 / p.页码 / Table n）`。
 > 写完后从本文件抽两份更短的：**简略版**（见 `brief-template.md`，带判断）与**摘录版**
-> （见 `notes-template.md`，去判断、不评级）。三版 md 都放 `reports/`，再调 `paper_docx` 一次出三份 Word。
+> （见 `notes-template.md`，去判断、不评级）。**勾中的版本** md 放 `reports/`，再调 `paper_docx`（`modes` 只写勾中的版本）出 Word；
+> 没勾中详细版时，详细版底稿落 `analysis/70-detail-draft.md`，出稿时作为 `baselineMd` 传给工具。
 
 <!-- meta: {"title": "<论文标题> 分析报告", "subtitle": "详细版", "author": "<姓名>", "date": "<YYYY-MM-DD>", "paper": "<论文标题>\n<期刊/会议> <年份>", "source": "详细版 · 论文分析模式", "version_label": "detail"} -->
 

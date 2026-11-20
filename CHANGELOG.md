@@ -1,4 +1,14 @@
-﻿# Changelog
+# Changelog
+
+## 1.2.0 — 2026-11-20
+
+- **适配 DSH 0.2.x 的 preset 机制**：新版（`dsh-agent-preset-registry` + `dsh-agent-preset`）不再扫描 `$DSH_HOME/.agent-presets/<id>/`，preset 必须是一条 `@deepseek-ai/dsh-agent-preset` 声明行。`cordis.patch.yml` 因此从「往 `agent-presets.roots` 塞目录」改为 `insert` 一条声明；0.1.x 用的旧写法保留在 `cordis.insert.patch.yml`。
+- **修复启动报错 `unknown prompt variable "{{cwd}}"`**：0.2.x 只注册 `provider` / `model` 两个插值变量，persona 里出现未注册变量会在组合期直接抛错。persona 首行改用 `{{model}}`，工作目录改由运行时上下文的 `Current working directory` 提供。
+- **版本由用户选**：新增 `tool-ask-user` 行，开工第一个动作是用 `ask_user_question`（`multi_select`）让用户勾选本次交付哪几版；`paper_docx` 的 `modes` 参数只编译被勾选的版本，未勾选的不写、不编译、不进 `reports/`。
+- **`paper_docx` 插件重写为 `plugins/paper-report-docx-2.js`**：渲染与校验脚本改由技能自带（`skills/paper-analysis-report/tools/`），预设不再留重复副本，技能可独立分发。
+- **新增 `tools/extract_pdf.py`**：PyMuPDF 抽正文，自动展开连字（ﬁ→fi）、去断词，输出 UTF-8/LF，供 `check_docx.py` 的英文引文逐字核对；控制台只打印统计，避免 GBK 控制台 `UnicodeEncodeError`。
+- **依赖补充**：`extract_pdf.py` 需要 `pip install PyMuPDF`（Windows 纯 wheel，不需要 poppler）。
+- 仓库 `package.json` 中损坏成 `??????` 的中文 description / keywords 已修复。
 
 ## 1.1.0 — 2026-09-17
 
@@ -6,21 +16,31 @@
 - **每篇文献独立文件夹**：PaperAnalysis/<日期>_<短标题>/ 自带 reports + analysis + assets + sources.md，可整包拷走。
 - **工具脚本随技能分发**：skills/paper-analysis-report/tools/（docx_core / make_docx / check_docx），技能可独立给别人用；--auto 按文档头推断版本。
 
-## 1.0.0 鈥?2026-09-17
+## 1.0.0 — 2026-09-17
 
-棣栦釜鍙垎鍙戠増鏈€?
-**棰勮涓庢妧鑳?*
-- Agent 棰勮 `paper-analysis`锛堥€夋嫨鍣ㄦ樉绀恒€岃鏂囧垎鏋愭ā寮忋€嶏級锛岀敱 `standard` 棰勮娲剧敓锛?  persona 鎹㈡垚璁烘枃鍒嗘瀽鍔╂墜锛堜笁鏉￠搧寰嬶細闆剁紪閫?/ 璇佹嵁浼樺厛 / 鍒ゆ柇鍒嗙骇锛夛紝
-  瀛︾鍙ｅ緞鎸夐泦鎴愮數璺伐绋嬶紙鍔熻€椼€佹椂搴忋€侀潰绉€佺簿搴﹀繀椤诲甫鍏ㄦ潯浠讹紱缁濅笉鎶?RTL 绾х粨鏋滆鎴愬疄娴嬶級銆?- 鎶€鑳?`paper-analysis-report`锛? 闃舵娴佹按绾匡紙P0 绔嬮」 鈫?P8 鍑虹锛夛紝10 涓弬鑰冩枃浠舵寜闇€鍔犺浇銆?- 鍒涙柊鐐硅瘎浼板彛寰勶細涓夋潯鍩虹嚎锛堣嚜鎶ユ渶杩戦偦 / 鍚屾湡鍚岀被 / 缁忓吀姣嶉锛? A/B/C/D 鍒嗙骇 + 6 鏉￠檷绾цЕ鍙戝櫒銆?- 瀵规姉楠岃瘉鐢?`workflow` 鎵囧嚭澶嶇幇鑰?/ 鍘嗗彶瀛﹀ / 瀹＄浜轰笁涓鑹层€?
-**鎶ュ憡浜や粯**
-- 涓ょ増 Word 鍚岀洰褰曚氦浠橈細`reports/<slug>_璇︾粏鐗?docx`锛堝畬鏁磋瘉鎹摼锛変笌
-  `reports/<slug>_绠€鐣ョ増.docx`锛?鈥? 椤垫暣娈垫枃瀛楋紝鎵嬫墦鎶ュ憡椋庢牸锛屾棤鏍囬銆佹棤琛ㄦ牸锛夈€?- 涓棿浠朵笌鏈€缁堟姤鍛婂垎绂伙細杩囩▼妗ｆ鍏ㄩ儴鍦?`analysis/`锛宍reports/` 鍙斁鍥涗唤鎶ュ憡鏂囦欢銆?- 鎺掑嵃锛氫腑鏂囧畫浣撳皬鍥涖€佽嫳鏂?Times New Roman銆?.5 鍊嶈璺濄€佸叏鏂囬粦鑹层€?
-**鍑虹宸ュ叿**
-- `paper_docx` 宸ュ叿锛堥璁捐嚜甯︽彃浠惰娉ㄥ唽锛夛細涓€娆¤皟鐢ㄥ畬鎴愪袱鐗堢紪璇?+ 浜や粯鍓嶆牎楠岋紝
-  鏃?`subprocess` 鏈嶅姟鏃跺洖閫€鎵撳嵃绛変环鐨?shell 鍛戒护銆?- `docx_check.py` 鏍￠獙锛氭畫鐣欐湭瑙ｅ喅鏍囪銆佺畝鐣ョ増绔犺妭涓庣瘒骞呫€?*涓ょ増鏁板瓧涓€鑷存€?*銆?  **鑻辨枃寮曟枃鑳藉惁鍦ㄨ鏂囧師鏂囦腑閫愬瓧鎵惧埌**锛堝幓绌虹櫧銆佸幓鎹㈣杩炲瓧绗︺€丅OM 瀹归敊锛夈€佸浘鐗囧紩鐢ㄥ瓨鍦ㄦ€с€?- 渚挎惡鎬э細Python 瑙ｉ噴鍣ㄦ寜 `PAPER_ANALYSIS_PYTHON` 鈫?PATH 鈫?甯歌瀹夎浣嶇疆锛堝惈 conda锛変緷娆℃帰娴嬶紝
-  鎵句笉鍒版椂缁欏嚭鍙墽琛岀殑澶勭疆鎻愮ず銆?
-**瀹夎**
-- `npx dsh-paper-analysis`锛氬畾浣嶉璁炬牴銆佸浠藉悓鍚嶆棫棰勮銆佸鍒躲€佷綋妫€ Python 涓?python-docx銆?- 鍚屾椂澹版槑 `dsh.bundle`锛屼緵 DSH 鎻掍欢鏈哄埗瑁呰浇锛坆undle 琛ヤ竵瑙?`cordis.patch.yml`锛夈€?
-**宸茬煡闄愬埗**
-- 椤垫暟缁熻涓嶅彲闈狅細`--pages` 璇?Windows 缂撳瓨鐨勬枃妗ｅ睘鎬э紝鍒氱敓鎴愮殑鏂囦欢璇讳笉鍒帮紱
-  绡囧箙浠ユ鏂囨眽瀛楁暟涓哄噯锛堢畝鐣ョ増鑸掗€傚尯 2000鈥?200 瀛楋級銆?- 璇ョ増鏈粎鍦?Windows + Python 3.13 + python-docx 1.2.0 涓婂疄娴嬭繃锛涘叾瀹冨钩鍙扮殑 Word 鐢熸垚璺緞鏈疄娴嬨€?
+首个可分发的版本。
+
+**预设与技能**
+- Agent 预设 `paper-analysis`（选择器显示「论文分析模式」），由 `standard` 预设派生；persona 换成论文分析助手（四条铁律：零编造 / 证据优先 / 判断分级 / 版本由用户定）。
+- 学科口径按集成电路工程：功耗、时序、面积、精度必须带全条件（工艺节点、Vdd、频率、工艺角、是否 post-layout）；绝不把 RTL/算法级结果说成实测。
+- 技能 `paper-analysis-report`：P0 立项 → P8 出稿的阶段流水线，10 个参考文件按需加载。
+- 创新点评估口径：三条基线（自报最近邻 / 同期同类 / 经典母题）+ A/B/C/D 分级 + 降级触发器。
+- 对抗验证用 `workflow` 扇出复现者 / 历史学家 / 审稿人三个角色。
+
+**报告交付**
+- 两版 Word 同目录交付：`reports/<slug>_详细版.docx`（完整证据链）与 `reports/<slug>_简略版.docx`（2–3 页整段文字，手打报告风格，无标题、无表格）。
+- 中间件与最终报告分离：过程档案全部在 `analysis/`，`reports/` 只放报告文件。
+- 排版：中文宋体小四、英文 Times New Roman、1.5 倍行距、全文黑色。
+
+**出稿工具**
+- `paper_docx` 工具（预设自带插件）：一次调用完成版本编译 + 交付前校验。
+- `check_docx.py` 校验：残留未解决标记、紧凑版章节与篇幅、**两版数字一致性**、**英文引文能否在论文原文中逐字找到**（去空白、去换行连字符、BOM 容错）、图片引用存在性。
+- 便携性：Python 解释器按 `PAPER_ANALYSIS_PYTHON` → PATH → 常见安装位置（含 conda）依次探测。
+
+**安装**
+- `npx dsh-paper-analysis`：定位预设根、备份同名旧预设、复制、体检 Python 与 python-docx。
+- 同时声明 `dsh.bundle`，供 DSH 插件机制装载（bundle 补丁见 `cordis.patch.yml`）。
+
+**已知限制**
+- 页数统计不可靠：`--pages` 读 Windows 缓存的文档属性，刚生成的文件读不到；篇幅以正文字数为准（简略版舒适区 2000–2200 字）。
+- 该版本仅在 Windows + Python 3.13 + python-docx 1.2.0 上实测过；其他平台的 Word 生成路径未实测。

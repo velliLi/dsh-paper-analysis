@@ -1,35 +1,47 @@
 ﻿# Word 出稿与交付前校验（P8）
 
-本 preset 自带一个工具 **`paper_docx`**（由 preset 目录里的 `plugins/docx-tool.js` 注册），
+本 preset 自带一个工具 **`paper_docx`**（由 preset 目录里的 `plugins/paper-report-docx-2.js` 注册），
 把 `reports/` 下的 markdown 编译成 Word 并跑校验。**优先用它**；它不可用时用等价的 shell 命令。渲染核心与 CLI 由**技能自带**（`skills/paper-analysis-report/tools/`：
 `docx_core.py` + `make_docx.py` + `check_docx.py`），所以技能可以脱离预设单独分发。
 
-工具与脚本都在 preset 目录里（`<preset>/plugins/tools/`），不需要安装任何东西。
+工具与脚本都在 preset 目录里（`<preset>/skills/paper-analysis-report/tools/`），不需要安装任何东西。
 
 ---
 
-## 1. 一次调用做完全部（三版）
+## 1. 一次调用只出**用户勾选的版本**
+
+`modes`（= 开工时用户勾选的版本）里写几版就出几版——**没勾选的版本不要放进 `modes`，也不要给它写 md**。
 
 ```
+# 勾了详细版 + 简略版
 paper_docx(
+  modes    = ["detail", "brief"],
   detailMd = "<OUT>/reports/<slug>_详细版.md",
   briefMd  = "<OUT>/reports/<slug>_简略版.md",
-  notesMd  = "<OUT>/reports/<slug>_摘录版.md",
   outDir   = "<OUT>/reports",
   source   = "<OUT>/analysis/source/paper.txt"
 )
+
+# 只勾了摘录版：详细版底稿只作数字一致性基线，不导出 docx
+paper_docx(
+  modes      = ["notes"],
+  notesMd    = "<OUT>/reports/<slug>_摘录版.md",
+  baselineMd = "<OUT>/analysis/70-detail-draft.md",
+  outDir     = "<OUT>/reports",
+  source     = "<OUT>/analysis/source/paper.txt"
+)
 ```
 
-它会依次执行：
+`modes` 省略时，工具会按实际给了哪些 md（`detailMd` / `briefMd` / `notesMd`）推断；`outDir` 是唯一必填项。
+每个被选中的版本依次执行：
 
-1. `make_docx --kind detail` —— 详细版：封面、自动目录域、页脚页码、表格样式、引文块、图题编号；
-2. `make_docx --kind brief` —— 简略版：**无封面、无标题行、无目录**，只留页脚左侧"简略版"标签；
-3. `make_docx --kind notes` —— 摘录版：同上但更紧凑，只有三节、无评级；
-4. `check_docx` —— 交付前校验（见 §3）。
+1. `make_docx --kind detail|brief|notes` —— 详细版：封面、自动目录域、页脚页码、表格样式、引文块、图题编号；
+   简略版：**无封面、无标题行、无目录**，只留页脚左侧"简略版"标签；摘录版：同上但更紧凑，只有三节、无评级；
+2. `check_docx` —— 交付前校验，只覆盖本次交付的版本 + 可选基线（见 §3），明细默认写 `analysis/check.json`。
 
-两版 docx 与它们的 markdown 同源、同目录，文件名只差"详细版/简略版"四个字。
+每份 docx 与它的 markdown 同源、同目录，文件名只差"详细版 / 简略版 / 摘录版"几个字。
 
-### 排印规范（两版一致，改样式请改 `docx_export.py` 的 `DocStyle`）
+### 排印规范（各版一致，改样式请改 `docx_core.py` 的 `DocStyle`）
 
 | 项 | 规定 |
 |---|---|
@@ -51,12 +63,13 @@ paper_docx(
 工具会直接把命令打印出来，形如：
 
 ```powershell
-python "<preset>\plugins\tools\docx_export.py" --input "<OUT>\reports\<slug>_详细版.md" --kind detail --out "<OUT>\reports" --pages
-python "<preset>\plugins\tools\docx_export.py" --input "<OUT>\reports\<slug>_简略版.md" --kind brief  --out "<OUT>\reports" --pages
-python "<preset>\plugins\tools\docx_check.py" --md "<OUT>\reports\<slug>_详细版.md" "<OUT>\reports\<slug>_简略版.md" --detail-docx "<OUT>\reports\<slug>_详细版.docx" --brief-docx "<OUT>\reports\<slug>_简略版.docx" --source "<OUT>\analysis\source\paper.txt"
+python "<preset>\skills\paper-analysis-report\tools\make_docx.py" --input "<OUT>\reports\<slug>_详细版.md" --kind detail --out "<OUT>\reports" --pages
+python "<preset>\skills\paper-analysis-report\tools\make_docx.py" --input "<OUT>\reports\<slug>_简略版.md" --kind brief  --out "<OUT>\reports" --pages
+python "<preset>\skills\paper-analysis-report\tools\check_docx.py" --md "<OUT>\reports\<slug>_详细版.md" "<OUT>\reports\<slug>_简略版.md" --detail-docx "<OUT>\reports\<slug>_详细版.docx" --brief-docx "<OUT>\reports\<slug>_简略版.docx" --source "<OUT>\analysis\source\paper.txt" --json-out "<OUT>\analysis\check.json"
 ```
 
-注意：中文路径要用引号包住。`--pages` 只是尽力而为：它读 Windows 文档属性里缓存过的页数，
+注意：中文路径要用引号包住。**只对勾选的版本各跑一条 `make_docx`**；没生成的版本就不要传 `--brief-docx` / `--notes-docx`，
+也不要把它写进 `--md`（除 `baselineMd` 底稿）。`--pages` 默认开启：`--pages` 只是尽力而为：它读 Windows 文档属性里缓存过的页数，
 而刚生成的文档从未被 Word 打开过，因此**通常返回 null 或 1**，不要据此下结论。
 （另一条路是让 Word 重排后导出 PDF 数页，但本机 Word 自动化对这种带自动域更新的文档会抛
 "Word 未能引发事件"，自动化不可靠——所以**篇幅以汉字数为准**，见下表。）
@@ -69,7 +82,7 @@ python "<preset>\plugins\tools\docx_check.py" --md "<OUT>\reports\<slug>_详细�
 | **简略版章节** | 需覆盖四个概念（各接受多种标题写法）：一句话结论 / 实验方法与结果 / 创新点 / 结论 | 按 `brief-template.md` 的六节补齐 |
 | **简略版篇幅** | 正文汉字 ≤ 3400（2–3 页的经验上限；2000–3200 为舒适区） | 删段落，不要改字号：先砍"主要问题"里次要条目 |
 | **简略版表格** | **纯文字为正常**（0 张表 PASS）；> 3 张表 warn | 把表格改写成段落——简略版要像手打报告 |
-| **两版数字一致** | 简略版每个"数字+单位"（忽略空白与连字符差异）都必须出现在**详细版原始 markdown**里（含 Mermaid/代码块）。**单向检查**：详细版多出来的数字（如只写在工艺参数表里的 30 nm / 50 nm）不会被报错 | 改正数字，或把该结论补进详细版 |
+| **紧凑版数字一致** | 被交付的简略版/摘录版里每个"数字+单位"（忽略空白与连字符差异）都必须出现在**详细版原始 markdown**里（含 Mermaid/代码块；没交付详细版时以 `baselineMd` 底稿为准）。**单向检查**：详细版多出来的数字（如只写在工艺参数表里的 30 nm / 50 nm）不会被报错 | 改正数字，或把该结论补进详细版 |
 | **引文可溯源** | **独立引文行**（`> ...`，无论有无引号）与纯英文行文里的 ≥40 字符引文，必须能在 `analysis/source/paper.txt` 中逐字找到 | 引文抄错就改；确实来自他文就改成转述 |
 | **图片引用** | markdown 里的 `![](path)` 必须存在（相对 markdown 所在目录解析） | 补齐 `assets/` 里的截图，或删掉该图 |
 
@@ -93,7 +106,7 @@ python "<preset>\plugins\tools\docx_check.py" --md "<OUT>\reports\<slug>_详细�
 
 ## 4. markdown 支持的写法
 
-`docx_export.py` 是轻量渲染器，支持：
+`docx_core.py` 是轻量渲染器，支持：
 
 - 开头一行元数据：`<!-- meta: {"title": "...", "subtitle": "...", "author": "...", "date": "...", "paper": "...", "source": "..."} -->`
   （必填 `title`；`paper` 里可用 `\n` 换行；`date` 用 `YYYY-MM-DD`）
@@ -115,7 +128,7 @@ python "<preset>\plugins\tools\docx_check.py" --md "<OUT>\reports\<slug>_详细�
 | 现象 | 原因与处理 |
 |---|---|
 | `无法写入 xxx.docx：文件被占用` | 该 docx 正在 Word/预览窗格里打开；关掉后重跑（脚本已自带重试） |
-| 简略版报 FAIL 且说"超出 2–3 页" | 精简内容，不要靠改字号；字号已在 `docx_export.py` 的 `DocStyle.for_kind('brief')` 里定好 |
+| 简略版报 FAIL 且说"超出 2–3 页" | 精简内容，不要靠改字号；字号已在 `docx_core.py` 的 `DocStyle.for_kind('brief')` 里定好 |
 | 引文全部报 FAIL | `--source` 指向的文件不是原文（例如指向了翻译稿），或路径写错 |
 | 目录在 Word 里是空的 | 打开文档时 Word 会自动刷新域；若没刷新，Ctrl+A 再按 F9 |
 | 页数显示为 null | 该文件从未被 Word 打开过，Windows 文档属性里还没有缓存页数；不影响交付 |
@@ -128,4 +141,4 @@ python "<preset>\plugins\tools\docx_check.py" --md "<OUT>\reports\<slug>_详细�
 - 没有 `python-docx` 且无法联网时：把 markdown 交给用户，并说明需要先装依赖；
   **不要**用 Word COM 手搓排版（本 preset 生成的文件带 `w:updateFields`，
   Word COM 打开会抛 "Word 未能引发事件"，页数统计因此走 Windows 文档属性而不是 Word）。
-- 脚本路径固定为 `<preset>/plugins/tools/`；不要复制到其它位置后再调用。
+- 脚本路径固定为 `<preset>/skills/paper-analysis-report/tools/`；不要复制到其它位置后再调用。

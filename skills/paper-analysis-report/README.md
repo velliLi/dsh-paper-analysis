@@ -1,27 +1,29 @@
 # paper-analysis-report（可迁移技能）
 
-把一篇论文的分析写成 **三份 Word**：详细版 / 简略版 / 摘录版。
-本技能**自带全部脚本**，不依赖任何特定 Agent 预设——任何能读文件、能跑命令的 Agent（或你自己手动跑）都能用。
-（本技能来自 https://github.com/velliLi/dsh-paper-analysis ；单独拷走这个目录也能用。）
+把一篇论文的分析写成 Word：**详细版 / 简略版 / 摘录版三选（可多选）**——交付哪几版由使用者在开工时决定，
+不默认三版全出。本技能**自带全部脚本**，不依赖任何特定 Agent 预设——任何能读文件、能跑命令的 Agent（或你自己手动跑）都能用。
 
 ```
 paper-analysis-report/
-├── SKILL.md                 ← 流程与契约（铁律、9 阶段、三版交付规则、目录约定）
+├── SKILL.md                 ← 流程与契约（铁律、版本多选、9 阶段、目录约定）
 ├── reference/               ← 10 个按需加载的参考文件（模板、评分口径、学科口径、自检清单…）
 └── tools/
     ├── check_env.py         ← 先跑这个：体检依赖与文件完整性
-    ├── docx_core.py         ← 渲染核心（markdown → Word，三版样式）
+    ├── extract_pdf.py       ← PDF → 正文 txt（PyMuPDF；展开连字/去断词，供引文逐字核对）
+    ├── docx_core.py         ← 渲染核心（markdown → Word，各版样式）
     ├── make_docx.py         ← 出稿 CLI（--kind detail|brief|notes，或 --auto 自动推断）
     └── check_docx.py        ← 交付前校验（章节/篇幅/评级词/引文溯源/数字一致性）
 ```
 
 ## 依赖
 
-只要 **Python 3.8+** 和 **python-docx**：
+出稿与校验只要 **Python 3.8+** 和 **python-docx**；从 PDF 取正文另需 **PyMuPDF**（可选但强烈建议）：
 
 ```bash
-pip install python-docx
-python tools/check_env.py     # 体检；退出码 0 表示可用
+pip install python-docx                    # 出稿 + 校验
+pip install PyMuPDF                        # tools/extract_pdf.py 用
+# 国内镜像：pip install -i https://pypi.tuna.tsinghua.edu.cn/simple PyMuPDF
+python tools/check_env.py                  # 体检；退出码 0 表示可用
 ```
 
 不需要 DSH、不需要 pandoc、不需要 LibreOffice；只有想看目录页码时才需要 Word/WPS。
@@ -29,21 +31,20 @@ python tools/check_env.py     # 体检；退出码 0 表示可用
 ## 怎么用
 
 ```bash
-# 1) 出稿：三份 markdown → 三份 docx（--auto 按文档头 version_label 自动判断版本）
+# 1) 出稿：只给**本次要交付的那几份** markdown（1–3 份，--auto 按文档头 version_label 判断版本）
 python tools/make_docx.py --auto \
-  --input reports/xxx_详细版.md reports/xxx_简略版.md reports/xxx_摘录版.md \
+  --input reports/xxx_详细版.md reports/xxx_简略版.md \
   --out reports
 
-# 2) 校验（PASS 才交付）
+# 2) 校验（PASS 才交付）：同样只针对交付的版本 + 详细版基线
 python tools/check_docx.py \
-  --md reports/xxx_详细版.md reports/xxx_简略版.md reports/xxx_摘录版.md \
+  --md reports/xxx_详细版.md reports/xxx_简略版.md \
   --detail-docx reports/xxx_详细版.docx \
   --brief-docx  reports/xxx_简略版.docx \
-  --notes-docx  reports/xxx_摘录版.docx \
-  --source analysis/source/paper.txt
+  --source analysis/source/paper.txt --json-out analysis/check.json
 ```
 
-三份 markdown 必须有文档头（`make_docx.py --auto` 靠它判断版本）：
+交付的每份 markdown 都必须有文档头（`make_docx.py --auto` 靠它判断版本）：
 
 ```html
 <!-- meta: {"title": "…", "subtitle": "简略版", "author": "…", "date": "YYYY-MM-DD",
@@ -51,7 +52,7 @@ python tools/check_docx.py \
 ```
 `version_label` 取 `detail` / `brief` / `notes`；也可用 `--kind` 显式指定。
 
-## 三版各自的要求
+## 三个候选版本各自的要求（**只写被选中的**）
 
 | 版本 | 要求 |
 |---|---|
@@ -69,7 +70,7 @@ python tools/check_docx.py \
 ## 校验器检查什么
 
 残留未解决标记（`TODO` 等）· 紧凑版是否混入留痕标记 · 简略/摘录版必备章节与篇幅 ·
-**摘录版是否混入评级用语** · **三版数字是否都能在详细版中找到** ·
+**摘录版是否混入评级用语** · **交付的紧凑版数字是否都能在详细版（或 `analysis/70-detail-draft.md` 底稿）中找到** ·
 **英文引文能否在论文原文中逐字找到**（去空白、去换行连字符、BOM 容错；省略号引文分段核对）· 图片引用是否存在。
 
 ## 常见问题

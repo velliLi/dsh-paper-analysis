@@ -1,38 +1,78 @@
-# dsh-paper-analysis 的 bundle 补丁
+# dsh-paper-analysis 的 bundle 补丁（DSH 0.2.x 机制）
 #
-# 【作用】把本包注册成 DSH 预设 roster 的一个根，于是「论文分析模式」直接出现在预设选择器里。
+# 【作用】把「论文分析模式」注册成 preset 注册表的一条声明行，于是它出现在预设选择器里。
 #
-# 【形态已实测】在 DSH 0.1.2-rc.1 上验证过：`dsh --profile web --patch <本文件> --dump-config`
-# 的组合树里确实出现被覆盖的 agent-presets 行（roots 生效）。依据：
-#   @deepseek-ai/dsh-agent-presets 的 Config schema
-#     { default, roots: [{path, trust: 'system'|'user'}], includeShippedRoot, includeUserRoot }
-#   以及第三方插件 dsh-tavern-plugin 的同一写法（它 patch 了 agent-presets）。
+# 【为什么是 insert 而不是 patch】
+# 旧版 DSH 由 @deepseek-ai/dsh-agent-presets 扫描 $DSH_HOME/.agent-presets/<id>/ 发现 preset，
+# 补丁只需往 agent-presets 的 roots 里塞目录（见 cordis.insert.patch.yml，0.1.x 用）。
+# 新版（dsh-agent-preset-registry + dsh-agent-preset）不再扫描任何目录，preset 必须是一条
+# @deepseek-ai/dsh-agent-preset 声明行，且目标 profile 里没有同 id 的行，所以这里用 insert。
 #
-# 【两种形态，按 profile 选】
-#   - patch（本文件）：目标 profile 里**已有** agent-presets 行时用（如 web，该行由
-#     @deepseek-ai/dsh-web-app 提供）。写成 insert 会因 id 重复冲突。
-#   - insert（cordis.insert.patch.yml）：目标 profile **没有**该行时用（如内置 default）。
+# 【资产位置】预设资产由 bin/install.js 复制到 $DSH_HOME/.agent-presets/paper-analysis/，
+# 本补丁只用 dshHomePath() 相对定位，不写死任何用户名或盘符：
+#   技能 → <DSH_HOME>/.agent-presets/paper-analysis/skills
+#   插件 → <DSH_HOME>/.agent-presets/paper-analysis/plugins/paper-report-docx-2.js
+# 若你改成把预设放在别处，改下面两处 dshHomePath(...) 的分段即可。
 #
-# 【为什么 roots 里两条都是表达式而不是写死的路径】
-# 本包可能来自三种安装方式，路径各不相同：npx 装到预设根、git clone、dsh plugin add 装到
-# profile 的 node_modules。写死任何一条都会在另两种情况下失效，因此：
-#   ① dshHomePath('.agent-presets') = 用户预设根（npx 安装器与手动 clone 都把预设放这里）
-#   ② import.meta.dirname           = **本补丁文件所在目录**（即本包安装位置，任何方式都对）
-# 注意 ② 的可信度：组合预览（--dump-config）只回显 YAML、不求值，因此它在运行时可不可用需要
-# 一次真实启动来确认。若启动时报 import.meta 相关错误，把 ② 换成你的实际安装路径即可。
+# 【求值上下文】dshHomePath 由 @deepseek-ai/dsh-app-boot 在 ctx 上 provide；!!js 表达式在
+# 组合求值时执行。若某个 DSH 版本不再提供这些符号，把对应行换成绝对路径字符串：
+#   - customSkillDirs: ['C:/path/to/skills']
+#   - name: 'file:///C:/path/to/plugins/paper-report-docx-2.js'
 #
-# 【注意的行为变化】补丁替换的是 agent-presets 的**整段 config**，因此 `default` 一并被设为
-# paper-analysis：装完后新会话默认进入「论文分析模式」。改回去只需编辑下面的 default。
+# 【注意的行为变化】insert 的是新增 preset，不覆盖已有 roster，也不改 default 预设。
 
-- id: agent-presets
-  config:
-    default: paper-analysis
-    includeShippedRoot: true
-    includeUserRoot: true
-    roots:
-      # ① 用户预设根（最可靠：npx 安装器与手动放置都落在这里）
-      - path: !!js dshHomePath('.agent-presets')
-        trust: user
-      # ② 本包所在目录（patch 求值上下文中的 import.meta.dirname）
-      - path: !!js import.meta.dirname
-        trust: user
+- insert:
+    - id: preset-paper-analysis
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: paper-analysis
+        name: 论文分析模式
+        description: 面向集成电路工程方向的论文精读 Agent：实验方法解剖、创新点分级（三条基线对照 + 可证伪表述）、证据链留痕；每篇文献独立成文件夹，开工时由用户多选要交付的版本（详细版 / 2–3 页简略版 / 三节摘录版），只产出所选版本。
+        order: 10
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                你是面向**集成电路工程（微电子 / EDA / 电路与系统）**方向的论文分析助手，由 {{model}} 驱动。你的服务对象是集成电路工程专业型硕士研究生。工作目录以运行时上下文里的 `Current working directory` 为准。
+
+                你的唯一交付物是**可落盘、可汇报、可复现的分析报告**，不是聊天式读后感叹。分析论文时按 `paper-analysis-report` 技能执行；该技能是操作规范，任何具体动作以它为准。
+
+                四条不可违背的规矩：
+                1. **零编造**。论文没给的数字绝不补；不确定就写 `[论文未给出]`、`[推断]`、`[待核实]`。引文照抄英文原句，不改写、不用翻译冒充引文。
+                2. **证据优先**。每条结论都要能指回 `§节号 / 页码 / Table 或 Fig 号`，并附一句原文引文；交付前用 grep 回查引文确实存在。
+                3. **判断分级**。你自己的看法必须标 `[推断]` 并给出可验证方式；创新点必须给出 A/B/C/D 分级、三条基线对照（自报最近邻 / 同期同类 / 经典母题）与**可证伪表述**。
+                4. **版本由用户定**。接下分析任务后的第一个动作（早于建目录、早于读 PDF）是用 `ask_user_question`（`multi_select: true`）让用户勾选本次交付哪几版报告（详细版 / 简略版 / 摘录版 / 全部都出）。**没被勾选的版本不写、不编译、不进 `reports/`**，不许默认三版全出；只有 ask 工具报错（当前界面没有应答者）时才降级为只出详细版，并在回复第一行写明 `[降级]` 与补救方式。
+
+                学科口径：功耗、时序、面积、精度一律带全条件（工艺节点、Vdd、频率、工艺角、是否 post-layout、是否含外围电路）。**绝不把 RTL/算法级结果说成硬件实测结论**；跨工艺、跨电压的对比必须标"不可直接比较"。
+
+                工作方式：**第一动作是问版本**——用 `ask_user_question`（`multi_select: true`）让用户勾选本次交付哪几版（详细版 / 简略版 / 摘录版），把结果写进 `analysis/00-context.md`，此后只写、只编译勾选的版本。然后落盘建目录，逐个阶段产出中间件（00-context / 10-outline / 20-claims / 30-experiments / 40-innovation / 50-critique / 60-method），再写详细版底稿（勾了详细版就落 `reports/`，没勾就落 `analysis/70-detail-draft.md`）并按勾选抽取紧凑版。P2/P3/P4 的素材用子代理并行取，对抗验证用 workflow 扇出；但**创新点分级与"我的结论"必须由你自己写**。开工前先读技能；技能里没说清的，宁可问一句，也不要猜。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+            config:
+              customSkillDirs:
+                - !!js dshHomePath('.agent-presets/paper-analysis/skills')
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: preset-plugins
+            name: !!js 'process.getBuiltinModule("node:url").pathToFileURL(dshHomePath(".agent-presets/paper-analysis/plugins/paper-report-docx-2.js")).href'
